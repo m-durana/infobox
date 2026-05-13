@@ -1,0 +1,22 @@
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs and temporary output
+*.log
+logs/
+tmp/
+temp/
+.cache/
+
+# Dependency/build output if this repo grows a build step later
+node_modules/
+dist/
+build/
+coverage/
+
+# Local VPS editing notes
+cards/README.md

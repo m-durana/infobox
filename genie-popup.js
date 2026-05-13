@@ -82,9 +82,9 @@ class GeniePopup extends HTMLElement {
 
         .content {
           background: var(--miro-panel);
-          width: min(760px, calc(100vw - 2rem));
-          max-height: min(760px, calc(100vh - 2rem));
-          padding: clamp(1.4rem, 4vw, 2.6rem);
+          width: min(720px, calc(100vw - 2rem));
+          max-height: calc(100vh - 2rem);
+          padding: clamp(1.35rem, 3.4vw, 2.35rem);
           border-radius: 0;
           overflow-y: auto;
           scrollbar-width: none;
@@ -139,11 +139,11 @@ class GeniePopup extends HTMLElement {
         ::slotted(h1) {
           max-width: calc(100% - 3rem);
           color: var(--miro-text);
-          font-size: clamp(2rem, 7vw, 4.4rem);
-          line-height: 0.92;
-          letter-spacing: -0.035em;
+          font-size: clamp(2.2rem, 6.2vw, 4rem);
+          line-height: 0.96;
+          letter-spacing: 0;
           margin-top: 0;
-          margin-bottom: 1rem;
+          margin-bottom: 0.85rem;
         }
 
         ::slotted(hr) {
@@ -167,29 +167,24 @@ class GeniePopup extends HTMLElement {
           margin: 0;
           color: var(--miro-muted);
           font-size: clamp(1rem, 2.5vw, 1.16rem);
-          line-height: 1.65;
-        }
-
-        ::slotted(.infobox-section-title) {
-          margin: 1.35rem 0 0.65rem;
-          color: var(--miro-text);
-          font-size: 0.9rem;
-          font-weight: 800;
-          letter-spacing: 0.01em;
-        }
-
-        ::slotted(.infobox-list) {
-          margin: 0;
-          padding-left: 1.1rem;
-          color: var(--miro-muted);
           line-height: 1.55;
+        }
+
+        ::slotted(.infobox-stack) {
+          width: 100%;
+          margin: 1.35rem 0 0;
+          border-collapse: collapse;
+          color: var(--miro-muted);
+          font-size: 0.98rem;
+          line-height: 1.45;
         }
 
         ::slotted(.infobox-action) {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          margin-top: 1.35rem;
+          gap: 0.45rem;
+          margin-top: 1.45rem;
           margin-right: 1.5rem;
           border-bottom: 1px solid transparent;
           color: #9aa0a6;
@@ -198,6 +193,10 @@ class GeniePopup extends HTMLElement {
           line-height: 1.4;
           text-decoration: none;
           transition: color 0.2s ease, border-color 0.2s ease;
+        }
+
+        ::slotted(.infobox-github) {
+          font-weight: 600;
         }
 
         ::slotted(.infobox-action:hover) {
@@ -338,6 +337,7 @@ class GeniePopup extends HTMLElement {
       windowHeight: window.innerHeight,
       scrollX: 0,
       scrollY: 0,
+      ignoreElements: (element) => element.id === 'field',
     });
   }
 
