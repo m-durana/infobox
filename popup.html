@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Infobox · miro.build</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,500;6..12,600;6..12,700;6..12,800&display=swap">
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    html,
+    body {
+        margin: 0;
+        min-height: 100%;
+        background: #0e0e10;
+        color: #f5f5f5;
+        font-family: "Nunito Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+    }
+
+    .demo-text {
+        text-align: center;
+        color: #b6bbc1;
+        user-select: none;
+    }
+
+    .demo-text h2 {
+        margin: 0 0 10px;
+        font-size: clamp(2rem, 7vw, 4.4rem);
+        font-weight: 800;
+        letter-spacing: -0.035em;
+        line-height: 0.92;
+    }
+
+    .demo-text p {
+        margin: 0;
+        color: #8a8f96;
+    }
+
+    #genie-canvas {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 10000;
+        display: none;
+    }
+
+    #info-overlay {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(14, 14, 16, 0.78);
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: #f5f5f5;
+
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 180ms ease, visibility 180ms ease;
+    }
+
+    #info-overlay.is-active {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    /*
+      Used only while html2canvas takes the snapshot.
+      Parent is invisible, but the box has its final layout.
+    */
+    #info-overlay.is-preparing {
+        opacity: 0;
+        visibility: visible;
+        pointer-events: none;
+        transition: none;
+    }
+
+    .info-content {
+        background: #0e0e10;
+        width: min(760px, calc(100vw - 2rem));
+        max-height: min(760px, calc(100vh - 2rem));
+        padding: clamp(1.4rem, 4vw, 2.6rem);
+        border-radius: 0;
+        overflow-y: auto;
+        position: relative;
+        box-shadow:
+            0 32px 90px rgba(0, 0, 0, 0.58),
+            0 0 0 1px rgba(255, 255, 255, 0.12);
+
+        opacity: 0;
+    }
+
+    #info-overlay.is-open .info-content,
+    #info-overlay.is-preparing .info-content {
+        opacity: 1;
+    }
+
+    #info-overlay.is-animating .info-content {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .close-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        display: grid;
+        place-items: center;
+        width: 2.2rem;
+        height: 2.2rem;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 0;
+        background: rgba(255, 255, 255, 0.04);
+        font-size: 1rem;
+        cursor: pointer;
+        color: #8a8f96;
+        transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+        user-select: none;
+    }
+
+    .close-btn:hover {
+        color: #f5f5f5;
+        border-color: rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    h1 {
+        max-width: calc(100% - 3rem);
+        color: #f5f5f5;
+        font-size: clamp(2rem, 7vw, 4.4rem);
+        line-height: 0.92;
+        letter-spacing: -0.035em;
+        margin-top: 0;
+        margin-bottom: 1rem;
+    }
+
+    code {
+        background: rgba(255, 255, 255, 0.08);
+        padding: 2px 6px;
+        border-radius: 0;
+    }
+
+    li {
+        margin: 0.5rem 0;
+    }
+
+    .infobox-lede {
+        margin: 0;
+        color: #b6bbc1;
+        font-size: clamp(1rem, 2.5vw, 1.16rem);
+        line-height: 1.65;
+    }
+
+    .infobox-section-title {
+        margin: 1.35rem 0 0.65rem;
+        color: #f5f5f5;
+        font-size: 0.9rem;
+        font-weight: 800;
+        letter-spacing: 0.01em;
+    }
+
+    .infobox-list {
+        margin: 0;
+        padding-left: 1.1rem;
+        color: #b6bbc1;
+        line-height: 1.55;
+    }
+
+    .infobox-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 1.35rem;
+        margin-right: 1.5rem;
+        border-bottom: 1px solid transparent;
+        color: #9aa0a6;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.4;
+        text-decoration: none;
+        transition: color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .infobox-action:hover {
+        border-bottom-color: #f5f5f5;
+        color: #f5f5f5;
+    }
+</style>
+</head>
+
+<body>
+    <canvas id="genie-canvas"></canvas>
+
+    <main class="demo-text">
+        <h2>Infobox</h2>
+        <p>Press "i" to open the miro.build-style project note.</p>
+    </main>
+
+    <div id="info-overlay">
+        <div class="info-content" id="info-content-box">
+            <span class="close-btn">&times;</span>
+
+            <h1>Infobox</h1>
+
+            <p class="infobox-lede">
+                A reusable project-information overlay for miro.build. It opens from the
+                cursor and gives each project a minimal technical summary.
+            </p>
+
+            <p class="infobox-section-title">Technical details</p>
+            <ul class="infobox-list">
+                <li>Language: JavaScript</li>
+                <li>Component: native Web Component</li>
+                <li>Animation: canvas scanline warp using html2canvas snapshots</li>
+                <li>Interaction: press <strong>i</strong> to open, <strong>Esc</strong> to close</li>
+            </ul>
+
+            <a class="infobox-action" href="https://github.com/m-durana" target="_blank" rel="noreferrer">View this project on GitHub</a>
+        </div>
+    </div>
+
+<script>
+(function () {
+    const overlay = document.getElementById("info-overlay");
+    const contentBox = document.getElementById("info-content-box");
+    const closeBtn = document.querySelector(".close-btn");
+    const canvas = document.getElementById("genie-canvas");
+    const ctx = canvas.getContext("2d");
+
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+    let isBusy = false;
+    let isOpen = false;
+    let currentRaf = null;
+
+    const DUR = 300;
+    const WIN_H = 330;
+    const ORIGIN_MODE = 'cursor'; // 'cursor', 'center', or 'top'
+
+    window.addEventListener("mousemove", (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+    });
+
+    function clamp(v, lo, hi) {
+        return Math.max(lo, Math.min(hi, v));
+    }
+
+    function lerp(a, b, t) {
+        return a + (b - a) * t;
+    }
+
+    // Ease In-Out Cubic
+    const eioC = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    // Ease In Squared
+    const eIn2 = (t) => t * t;
+    // Ease Out Squared
+    const eOut2 = (t) => 1 - (1 - t) * (1 - t);
+
+    function nextFrame() {
+        return new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+
+    function setupCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        canvas.width = Math.round(window.innerWidth * dpr);
+        canvas.height = Math.round(window.innerHeight * dpr);
+        canvas.style.display = "block";
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    }
+
+    function clearCanvas() {
+        if (currentRaf) {
+            cancelAnimationFrame(currentRaf);
+            currentRaf = null;
+        }
+
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        canvas.style.display = "none";
+    }
+
+    async function snapshotWindow() {
+        const rect = contentBox.getBoundingClientRect();
+
+        return await html2canvas(contentBox, {
+            backgroundColor: null,
+            scale: 1,
+            useCORS: true,
+            allowTaint: false,
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+            windowWidth: window.innerWidth,
+            windowHeight: window.innerHeight,
+            scrollX: 0,
+            scrollY: 0
+        });
+    }
+
+    function getOriginPoint(finalRect, cursorX, cursorY) {
+        if (ORIGIN_MODE === 'cursor') {
+            return {
+                x: clamp(cursorX, 0, window.innerWidth),
+                y: clamp(cursorY, 0, window.innerHeight)
+            };
+        } else if (ORIGIN_MODE === 'top') {
+            // Origin from top center of the box
+            return {
+                x: finalRect.left + finalRect.width / 2,
+                y: finalRect.top
+            };
+        } else {
+            // Origin from center of the box
+            return {
+                x: finalRect.left + finalRect.width / 2,
+                y: finalRect.top + finalRect.height / 2
+            };
+        }
+    }
+
+    function renderGenie(sourceCanvas, rawT, direction, origin, finalRect) {
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+        const sourceW = sourceCanvas.width;
+        const sourceH = sourceCanvas.height;
+
+        // Normalized Y position of origin point within the box
+        const originR = clamp((origin.y - finalRect.top) / finalRect.height, 0, 1);
+
+        for (let y = 0; y < sourceH; y++) {
+            const r = y / sourceH;
+
+            // Distance-based staggering: rows farther from origin start later
+            const distanceFromOrigin = Math.abs(r - originR);
+            const delay = clamp(distanceFromOrigin * 0.48, 0, 0.48);
+            const localT = clamp((rawT - delay) / (1 - delay), 0, 1);
+
+            // For X stretching, use simple progress
+            const xE = eioC(localT);
+            // For Y movement, use squared easing
+            const yE = eIn2(localT);
+
+            let left, right, destY;
+
+            if (direction === 'minimize') {
+                left = lerp(finalRect.left, origin.x, xE);
+                right = lerp(finalRect.right, origin.x, xE);
+                destY = lerp(finalRect.top + y, origin.y, yE);
+            } else {
+                left = lerp(origin.x, finalRect.left, xE);
+                right = lerp(origin.x, finalRect.right, xE);
+                destY = lerp(origin.y, finalRect.top + r * finalRect.height, yE);
+            }
+
+            const rowW = right - left;
+            if (rowW < 0.8) continue;
+
+            ctx.drawImage(sourceCanvas, 0, y, sourceW, 1, left, destY, rowW, 1);
+        }
+    }
+
+    function animateGenie(sourceCanvas, direction, origin, finalRect) {
+        return new Promise((resolve) => {
+            let start = null;
+
+            function frame(timestamp) {
+                if (!start) start = timestamp;
+
+                const rawT = clamp((timestamp - start) / DUR, 0, 1);
+                renderGenie(sourceCanvas, rawT, direction, origin, finalRect);
+
+                if (rawT < 1) {
+                    currentRaf = requestAnimationFrame(frame);
+                } else {
+                    resolve();
+                }
+            }
+
+            currentRaf = requestAnimationFrame(frame);
+        });
+    }
+
+    async function openOverlay() {
+        if (isBusy || isOpen) return;
+
+        isBusy = true;
+
+        overlay.classList.add("is-preparing");
+        overlay.classList.remove("is-active", "is-open", "is-animating");
+
+        await nextFrame();
+
+        const finalRect = contentBox.getBoundingClientRect();
+        const origin = getOriginPoint(finalRect, mouseX, mouseY);
+
+        const sourceCanvas = await snapshotWindow();
+
+        overlay.classList.remove("is-preparing");
+        overlay.classList.add("is-active", "is-animating");
+
+        setupCanvas();
+
+        await animateGenie(sourceCanvas, "open", origin, finalRect);
+
+        clearCanvas();
+
+        overlay.classList.remove("is-animating");
+        overlay.classList.add("is-open");
+
+        isOpen = true;
+        isBusy = false;
+    }
+
+    async function closeOverlay() {
+        if (isBusy || !isOpen) return;
+
+        isBusy = true;
+
+        const finalRect = contentBox.getBoundingClientRect();
+        const origin = getOriginPoint(finalRect, mouseX, mouseY);
+
+        const sourceCanvas = await snapshotWindow();
+
+        overlay.classList.remove("is-open");
+        overlay.classList.add("is-animating");
+
+        setupCanvas();
+
+        await animateGenie(sourceCanvas, "minimize", origin, finalRect);
+
+        clearCanvas();
+
+        overlay.classList.remove("is-active", "is-animating");
+
+        isOpen = false;
+        isBusy = false;
+    }
+
+    function toggleOverlay() {
+        if (isOpen) {
+            closeOverlay();
+        } else {
+            openOverlay();
+        }
+    }
+
+    window.addEventListener("keydown", (e) => {
+        const activeElement = document.activeElement;
+        const isTyping =
+            ["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
+            activeElement.isContentEditable;
+
+        if (isTyping) return;
+
+        if (e.key.toLowerCase() === "i") {
+            toggleOverlay();
+        }
+
+        if (e.key === "Escape" && isOpen) {
+            closeOverlay();
+        }
+    });
+
+    closeBtn.addEventListener("click", closeOverlay);
+
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) {
+            closeOverlay();
+        }
+    });
+
+    window.addEventListener("resize", () => {
+        clearCanvas();
+
+        if (isOpen) {
+            overlay.classList.add("is-open");
+        }
+    });
+})();
+</script>
+</body>
+</html>
