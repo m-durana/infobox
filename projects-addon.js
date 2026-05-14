@@ -203,8 +203,17 @@
     popup.disableGlobalHotkey = true;
     document.body.appendChild(popup);
 
+    const items = Array.from(document.querySelectorAll('.grid .item'));
     let hoveredItem = null;
-    document.querySelectorAll('.grid .item').forEach((item) => {
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    items.forEach((item) => {
       item.addEventListener('mouseenter', () => { hoveredItem = item; });
       item.addEventListener('mouseleave', () => {
         if (hoveredItem === item) hoveredItem = null;
@@ -214,6 +223,27 @@
         if (hoveredItem === item) hoveredItem = null;
       });
     });
+
+    // Pick the chip whose center is closest to the cursor. Used when
+    // 'i' is pressed without an explicit hover/focus target so the key
+    // always shows *something* meaningful (the overview card was
+    // removed for being noise — falling back to the nearest project
+    // is the next best behaviour).
+    const nearestItem = () => {
+      let best = null;
+      let bestDist = Infinity;
+      for (const el of items) {
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        const d = Math.hypot(cx - mouseX, cy - mouseY);
+        if (d < bestDist) {
+          bestDist = d;
+          best = el;
+        }
+      }
+      return best;
+    };
 
     document.addEventListener('keydown', async (event) => {
       if (event.key.toLowerCase() !== 'i') return;
@@ -227,16 +257,17 @@
         return;
       }
 
-      const activeItem = hoveredItem || document.activeElement?.closest?.('.grid .item');
+      const activeItem =
+        hoveredItem ||
+        document.activeElement?.closest?.('.grid .item') ||
+        nearestItem();
       const key = getProjectKey(activeItem);
-
-      // No project hovered/focused → nothing meaningful to show.
       if (!key) return;
 
       const card = await loadCard(key);
       if (!card) return;
       const title = readChipTitle(activeItem) || key;
-      popup.show(renderInfo(card, title));
+      popup.show(renderInfo(card, title), activeItem);
     });
   };
 
